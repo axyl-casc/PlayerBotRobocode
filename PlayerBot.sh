@@ -1,2 +1,5 @@
 #!/bin/sh
-java -cp ../lib/* PlayerBot.java 
+# Compile the bot
+javac -cp lib/* PlayerBot.java
+# Run the bot
+java -cp lib/*:. PlayerBot
