@@ -263,6 +263,28 @@ public class PlayerBot extends Bot {
                 }
             }
 
+            // Draw energy bars above the compass
+            int barHeight = 12;
+            int barWidth = (w / 2) - 40;
+            int barY = 10;
+
+            // Enemy energy on the left
+            double enemyEnergy = lastScan != null ? lastScan.getEnergy() : 0.0;
+            double enemyRatio = Math.max(0, Math.min(1, enemyEnergy / 100.0));
+            bufferGraphics.setColor(Color.DARK_GRAY);
+            bufferGraphics.drawRect(20, barY, barWidth, barHeight);
+            bufferGraphics.setColor(Color.RED);
+            bufferGraphics.fillRect(20 + 1, barY + 1, (int) ((barWidth - 1) * enemyRatio), barHeight - 1);
+
+            // Player energy on the right
+            double myEnergy = getEnergy();
+            double myRatio = Math.max(0, Math.min(1, myEnergy / 100.0));
+            int rightX = w - barWidth - 20;
+            bufferGraphics.setColor(Color.DARK_GRAY);
+            bufferGraphics.drawRect(rightX, barY, barWidth, barHeight);
+            bufferGraphics.setColor(Color.GREEN);
+            bufferGraphics.fillRect(rightX + 1, barY + 1, (int) ((barWidth - 1) * myRatio), barHeight - 1);
+
             // Draw final image
             g.drawImage(bufferImage, 0, 0, null);
         }
