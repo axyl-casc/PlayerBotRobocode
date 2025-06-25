@@ -58,11 +58,16 @@ public class PlayerBot extends Bot {
     private final CompassPanel compassPanel = new CompassPanel();
 
     // ── visibility tracking ──────────────────────────────────────────────
-    private volatile ScannedBotEvent lastScan = null;
-    private volatile double lastScanAngle = Double.NaN; // radar heading at last scan
+    private static class EnemyInfo {
+        ScannedBotEvent event;
+        double angle;
+        int sinceLastScan;
+    }
+
+    private final ConcurrentHashMap<Integer, EnemyInfo> enemies = new ConcurrentHashMap<>();
+
     private volatile double botHeading = 0; // our current heading
     private volatile double gunHeading = 0; // current gun direction
-    private int sinceLastScan = 0;
 
 
     // ── entrypoint ───────────────────────────────────────────────────────
@@ -119,7 +124,8 @@ public class PlayerBot extends Bot {
             handleGun();
             handleFire();
             updateHud();
-            sinceLastScan++;
+            for (EnemyInfo ei : enemies.values())
+                ei.sinceLastScan++;
             go();
         }
     }
@@ -127,9 +133,10 @@ public class PlayerBot extends Bot {
     // ── event handler ────────────────────────────────────────────────────
     @Override
     public void onScannedBot(ScannedBotEvent e) {
-        lastScan = e;
-        lastScanAngle = getRadarDirection(); // radar heading when bot detected
-        sinceLastScan = 0; // reset scan timer
+        EnemyInfo info = enemies.computeIfAbsent(e.getScannedBotId(), k -> new EnemyInfo());
+        info.event = e;
+        info.angle = getRadarDirection(); // radar heading when bot detected
+        info.sinceLastScan = 0; // reset scan timer
     }
 
     // ── controls ─────────────────────────────────────────────────────────
@@ -141,10 +148,8 @@ public class PlayerBot extends Bot {
 
         if (key(KeyEvent.VK_UP) || key(KeyEvent.VK_W)) {
             speed = Math.min(speed + accel, maxSpeed);
-            sinceLastScan += 20;
         } else if (key(KeyEvent.VK_DOWN) || key(KeyEvent.VK_S)) {
             speed = Math.max(speed - decel, -maxSpeed);
-            sinceLastScan += 20;
         } else { // natural deceleration
             speed = speed > 0 ? Math.max(0, speed - decel)
                     : speed < 0 ? Math.min(0, speed + decel) : 0;
@@ -202,13 +207,18 @@ public class PlayerBot extends Bot {
                 getRadarDirection(), getGunHeat(), getSpeed());
 
         StringBuilder sb = new StringBuilder(stats).append("\n\nVisibility\n");
-        if (lastScan != null)
-            sb.append(String.format(
-                    "Angle: %.1f\nEnemy ID: %d\nEnemy X: %.1f\nEnemy Y: %.1f\nEnemy Energy: %.1f\nEnemy Direction: %.1f\nEnemy Speed: %.1f",
-                    lastScanAngle, lastScan.getScannedBotId(), lastScan.getX(), lastScan.getY(),
-                    lastScan.getEnergy(), lastScan.getDirection(), lastScan.getSpeed()));
-        else
+        if (enemies.isEmpty()) {
             sb.append("No enemy scanned");
+        } else {
+            for (java.util.Map.Entry<Integer, EnemyInfo> entry : enemies.entrySet()) {
+                EnemyInfo ei = entry.getValue();
+                ScannedBotEvent ev = ei.event;
+                sb.append(String.format(
+                        "Angle: %.1f\nEnemy ID: %d\nEnemy X: %.1f\nEnemy Y: %.1f\nEnemy Energy: %.1f\nEnemy Direction: %.1f\nEnemy Speed: %.1f\n\n",
+                        ei.angle, entry.getKey(), ev.getX(), ev.getY(), ev.getEnergy(), ev.getDirection(),
+                        ev.getSpeed()));
+            }
+        }
 
         infoArea.setText(sb.toString());
     }
@@ -255,14 +265,12 @@ public class PlayerBot extends Bot {
             bufferGraphics.drawString("180°", cx - r - 25, cy + 15);
             bufferGraphics.drawString("270°", cx - 15, cy + r + 15);
 
-            drawDot(bufferGraphics, Color.GREEN, botHeading, r - 50);
-            drawDot(bufferGraphics, Color.BLUE, gunHeading, r - 30);
-            if (!Double.isNaN(lastScanAngle)) {
-                if (sinceLastScan > 30 * 2) { // 30 ticks = 2 seconds
-                    drawDot(bufferGraphics, Color.YELLOW, lastScanAngle, r - 10);
-                } else {
-                    drawDot(bufferGraphics, Color.RED, lastScanAngle, r - 10);
-                }
+            drawDot(bufferGraphics, Color.GREEN, botHeading, r - 50, null);
+            drawDot(bufferGraphics, Color.BLUE, gunHeading, r - 30, null);
+            for (java.util.Map.Entry<Integer, EnemyInfo> entry : enemies.entrySet()) {
+                EnemyInfo ei = entry.getValue();
+                Color c = ei.sinceLastScan > 30 * 2 ? Color.YELLOW : Color.RED;
+                drawDot(bufferGraphics, c, ei.angle, r - 10, Integer.toString(entry.getKey()));
             }
 
             // Draw energy bars above the compass
@@ -270,8 +278,16 @@ public class PlayerBot extends Bot {
             int barWidth = (w / 2) - 40;
             int barY = 10;
 
-            // Enemy energy on the left
-            double enemyEnergy = lastScan != null ? lastScan.getEnergy() : 0.0;
+            // Enemy energy on the left - use most recently scanned bot
+            ScannedBotEvent recent = null;
+            int best = Integer.MAX_VALUE;
+            for (EnemyInfo ei : enemies.values()) {
+                if (ei.sinceLastScan < best) {
+                    best = ei.sinceLastScan;
+                    recent = ei.event;
+                }
+            }
+            double enemyEnergy = recent != null ? recent.getEnergy() : 0.0;
             double enemyRatio = Math.max(0, Math.min(1, enemyEnergy / 100.0));
             bufferGraphics.setColor(Color.DARK_GRAY);
             bufferGraphics.drawRect(20, barY, barWidth, barHeight);
@@ -291,13 +307,17 @@ public class PlayerBot extends Bot {
             g.drawImage(bufferImage, 0, 0, null);
         }
 
-        private void drawDot(Graphics2D g2, Color col, double angDeg, int radius) {
+        private void drawDot(Graphics2D g2, Color col, double angDeg, int radius, String label) {
             double rad = Math.toRadians(angDeg);
             int cx = getWidth() / 2, cy = getHeight() / 2;
             int x = cx + (int) (radius * Math.cos(rad)); // 0° = right
             int y = cy - (int) (radius * Math.sin(rad)); // 90° = up
             g2.setColor(col);
             g2.fillOval(x - 6, y - 6, 12, 12);
+            if (label != null) {
+                g2.setColor(Color.WHITE);
+                g2.drawString(label, x + 8, y);
+            }
         }
     }
 
