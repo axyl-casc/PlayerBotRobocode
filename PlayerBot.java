@@ -1,3 +1,40 @@
+/*
+ * ================================================================
+ *  PlayerBot – Manually-Controlled Tank for **Robocode Tank Royale**
+ *  ---------------------------------------------------------------
+ *  Author : Axyl Carefoot-Schulz
+ *  File   : PlayerBot.java
+ *  Date   : 2025-06-25
+ *
+ *  DESCRIPTION
+ *  This robot lets you jump into the arena and drive a tank yourself.
+ *  Use it to feel how turning, acceleration, gun rotation, and firing
+ *  behave before you start coding AI logic.
+ *
+ *  CONTROLS
+ *  --------
+ *  Movement
+ *    ↑  or **W**  – accelerate forward
+ *    ↓  or **S**  – move backward
+ *    ←  or **A**  – turn tank left
+ *    →  or **D**  – turn tank right
+ *
+ *  Gun
+ *    **Q** – rotate gun left
+ *    **E** – rotate gun right
+ *    **R** – center gun relative to the tank
+ *
+ *  Fire
+ *    **Shift + Space** – high-power shot
+ *    **Space** or **Enter** – regular shot
+ *
+ *  ----------------------------------------------------------------
+ *  Tip: Keep the TPS (turns-per-second) slider low while you practise
+ *  so you can watch each control input take effect.
+ * ================================================================
+ */
+
+
 
 import dev.robocode.tankroyale.botapi.*;
 import java.awt.*;
@@ -46,7 +83,7 @@ public class PlayerBot extends Bot {
                 System.exit(0);
             }
         });
-        infoFrame.setSize(600, 200);
+        infoFrame.setSize(900, 200);
         infoFrame.setAlwaysOnTop(true);
         infoFrame.setVisible(true);
     }
@@ -112,9 +149,9 @@ public class PlayerBot extends Bot {
 
     private void handleGun() {
         if (key(KeyEvent.VK_Q))
-            setTurnGunLeft(5);
+            setTurnGunLeft(2.5);
         else if (key(KeyEvent.VK_E))
-            setTurnGunRight(5);
+            setTurnGunRight(2.5);
         else if (key(KeyEvent.VK_R))
             setTurnGunRight(normalizeRelative(getGunDirection() - getDirection()));
         else
