@@ -57,7 +57,11 @@ public class PlayerBot extends Bot {
             keys.add(code);
         else if (e.getID() == KeyEvent.KEY_RELEASED)
             keys.remove(code);
-        return false; // don’t consume – other apps still see the keys
+
+        // Consume the event so the focused component doesn't emit
+        // the default system beep on Windows when an unbound key is pressed.
+        e.consume();
+        return false; // still allow other apps to see the keys
     }
 
     // --- bot description ---------------------------------------------------
