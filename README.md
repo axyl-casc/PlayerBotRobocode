@@ -2,25 +2,17 @@
 
 This repository contains a simple manual-control bot for Robocode Tank Royale.
 
-## Compilation
+## Building
 
-Compile the bot with the API jar located in the `lib` folder:
+Run the provided build script to compile the launcher and bot and package them
+into a redistributable jar:
 
-```bash
-javac -cp lib/* PlayerBot.java
+```cmd
+build.bat
 ```
 
-To run the compiled bot:
-
-```bash
-java -cp lib/*:. PlayerBot
-```
-
-If you want to package the bot into a jar you can do:
-
-```bash
-jar --create --file PlayerBot.jar PlayerBot.class PlayerBot.json
-```
+The resulting `PlayerBotLauncher.jar` will launch a small window where you can
+enter the server address and secret before connecting.
 
 ## VS Code setup
 

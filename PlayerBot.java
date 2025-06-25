@@ -64,12 +64,14 @@ public class PlayerBot extends Bot {
     private volatile double gunHeading = 0; // current gun direction
     private int sinceLastScan = 0;
 
-    private static final String DEFAULT_URL = "ws://localhost:7654";
-    private static final String DEFAULT_SECRET = "Zur2Fpt1ExRc5G3WSO/8oM574f/pmEbZ22bqXHlm4/";
 
     // ── entrypoint ───────────────────────────────────────────────────────
     public static void main(String[] args) {
-        new PlayerBot().start();
+        if (args.length < 2) {
+            System.err.println("Usage: PlayerBot <server-url> <server-secret>");
+            return;
+        }
+        new PlayerBot(args[0], args[1]).start();
     }
 
     // ── static initialisation of main window ─────────────────────────────
@@ -101,8 +103,8 @@ public class PlayerBot extends Bot {
     }
 
     // ── constructor ──────────────────────────────────────────────────────
-    public PlayerBot() {
-        super(BotInfo.fromFile("PlayerBot.json"), URI.create(DEFAULT_URL), DEFAULT_SECRET);
+    public PlayerBot(String serverUrl, String serverSecret) {
+        super(BotInfo.fromFile("PlayerBot.json"), URI.create(serverUrl), serverSecret);
         // add compass panel once the bot is constructed (static block already ran)
         infoFrame.add(compassPanel, BorderLayout.CENTER);
         infoFrame.validate();
