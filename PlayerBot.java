@@ -34,37 +34,40 @@
  * ================================================================
  */
 
-
-
 import dev.robocode.tankroyale.botapi.*;
+import dev.robocode.tankroyale.botapi.events.ScannedBotEvent;
 import java.awt.*;
 import java.awt.event.*;
 import java.net.URI;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Manual-control bot driven by your keyboard. */
+/** Manual‑control bot driven by your keyboard. */
 public class PlayerBot extends Bot {
 
-    // --- keyboard state ----------------------------------------------------
+    // ── keyboard state ───────────────────────────────────────────────────
     private static final Set<Integer> keys = ConcurrentHashMap.newKeySet();
     private static final int KEY_FIRE_DELAY = 8; // ticks between shots
     private int fireCooldown = 0;
 
-    // --- info window components -------------------------------------------
+    // ── info window components ───────────────────────────────────────────
     private static final Frame infoFrame;
     private static final TextArea infoArea;
 
+    // ── visibility tracking ──────────────────────────────────────────────
+    private ScannedBotEvent lastScan = null;
+    private double lastScanAngle = Double.NaN; // relative to our heading (–180..180)
 
     private static final String DEFAULT_URL = "ws://localhost:7654";
     private static final String DEFAULT_SECRET = "Zur2Fpt1ExRc5G3WSO/8oM574f/pmEbZ22bqXHlm4/";
-    // --- add this at the very end of the class -------------------------------
+
+    // ── entrypoint ───────────────────────────────────────────────────────
     public static void main(String[] args) {
-        // Construct the bot and hand control to the Tank Royale API
+        // Construct the bot and hand control to the Tank Royale API
         new PlayerBot().start();
     }
 
-    static { // one off, installs a global key hook
+    static { // one‑off: installs a global key hook
         KeyboardFocusManager.getCurrentKeyboardFocusManager()
                 .addKeyEventDispatcher(PlayerBot::dispatch);
 
@@ -83,7 +86,7 @@ public class PlayerBot extends Bot {
                 System.exit(0);
             }
         });
-        infoFrame.setSize(900, 200);
+        infoFrame.setSize(900, 400);
         infoFrame.setAlwaysOnTop(true);
         infoFrame.setVisible(true);
     }
@@ -95,35 +98,36 @@ public class PlayerBot extends Bot {
         else if (e.getID() == KeyEvent.KEY_RELEASED)
             keys.remove(code);
 
-        // Consume the event so the focused component doesn't emit
-        // the default system beep on Windows when an unbound key is pressed.
+        // Consume so focused component doesn’t beep on Windows.
         e.consume();
         return false; // still allow other apps to see the keys
     }
 
-    // --- bot description ---------------------------------------------------
-
+    // ── bot description ──────────────────────────────────────────────────
     public PlayerBot() {
         super(BotInfo.fromFile("PlayerBot.json"), URI.create(DEFAULT_URL), DEFAULT_SECRET);
-
     }
 
-    // --- main loop ---------------------------------------------------------
+    // ── main loop ────────────────────────────────────────────────────────
     @Override
     public void run() {
-
         while (isRunning()) {
             handleMovement();
             handleGun();
             handleFire();
             updateInfoWindow();
-
-            // tell the server we’re done for this tick
-            go();
+            go(); // we’re done for this tick
         }
     }
 
-    // --- helpers -----------------------------------------------------------
+    // ── event handlers ───────────────────────────────────────────────────
+    @Override
+    public void onScannedBot(ScannedBotEvent event) {
+        lastScan = event;
+        lastScanAngle =  getRadarDirection();
+    }
+
+    // ── control helpers ──────────────────────────────────────────────────
     private void handleMovement() {
         double speed = getSpeed();
         final double accel = 1; // Constants.ACCELERATION
@@ -168,32 +172,47 @@ public class PlayerBot extends Bot {
         boolean enterDown = key(KeyEvent.VK_ENTER);
         boolean shiftDown = key(KeyEvent.VK_SHIFT); // ⇧ key
 
-        // ── high-power shot when Shift + Space ────────────────────────────────
+        // high‑power shot when Shift + Space
         if (spaceDown && shiftDown && getGunHeat() == 0) {
-            fire(3.0); // full-power blast
+            fire(3.0);
             fireCooldown = KEY_FIRE_DELAY;
         }
-        // ── regular shot for plain Space or Enter ─────────────────────────────
+        // regular shot for Space or Enter
         else if ((spaceDown || enterDown) && getGunHeat() == 0) {
-            fire(1.8); // modest power
+            fire(1.8);
             fireCooldown = KEY_FIRE_DELAY;
         }
     }
 
     private void updateInfoWindow() {
-        if (infoArea != null) {
-            infoArea.setText(String.format(
-                    "Energy: %.1f\nX: %.1f\nY: %.1f\nHeading: %.1f\nGun Heading: %.1f\nRadar Heading: %.1f\nGun Heat: %.1f\nSpeed: %.1f",
-                    getEnergy(), getX(), getY(), getDirection(), getGunDirection(),
-                    getRadarDirection(), getGunHeat(), getSpeed()));
+        if (infoArea == null)
+            return;
+
+        String stats = String.format(
+                "Energy: %.1f\nX: %.1f\nY: %.1f\nHeading: %.1f\nGun Heading: %.1f\nRadar Heading: %.1f\nGun Heat: %.1f\nSpeed: %.1f",
+                getEnergy(), getX(), getY(), getDirection(), getGunDirection(),
+                getRadarDirection(), getGunHeat(), getSpeed());
+
+        StringBuilder sb = new StringBuilder(stats);
+        sb.append("\n\nVisibility\n");
+        if (lastScan != null) {
+            sb.append(String.format(
+                    "Angle: %.1f\nEnemy ID: %d\nEnemy X: %.1f\nEnemy Y: %.1f\nEnemy Energy: %.1f\nEnemy Direction: %.1f\nEnemy Speed: %.1f",
+                    lastScanAngle, lastScan.getScannedBotId(), lastScan.getX(), lastScan.getY(),
+                    lastScan.getEnergy(), lastScan.getDirection(), lastScan.getSpeed()));
+        } else {
+            sb.append("No enemy scanned");
         }
+
+        infoArea.setText(sb.toString());
     }
 
+    // ── utility ───────────────────────────────────────────────────────────
     private static boolean key(int kc) {
         return keys.contains(kc);
     }
 
-    /** Ensures -180 < angle ≤ 180. */
+    /** Ensures –180 < angle ≤ 180. */
     private static double normalizeRelative(double angle) {
         while (angle > 180)
             angle -= 360;
