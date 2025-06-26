@@ -229,7 +229,11 @@ public class PlayerBot extends Bot {
     @Override
     public void onHitByBullet(dev.robocode.tankroyale.botapi.events.HitByBulletEvent e) {
         double ang = e.getBullet().getDirection();
-        logEvent(String.format("You were hit by a bullet at %.1f\u00b0!", ang));
+        // Bearing relative to our current heading. Equivalent to e.getBearing()
+        double bearing = normalizeRelative(ang - getDirection());
+        logEvent(String.format(
+                "You were hit by a bullet at %.1f\u00b0 (bearing %.1f\u00b0)!",
+                ang, bearing));
     }
 
     @Override
