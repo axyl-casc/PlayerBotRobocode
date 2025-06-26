@@ -67,9 +67,21 @@ public class PlayerBot extends Bot {
     // ── GUI components ─────────────────────────────────────────────────
     private static final Frame infoFrame;
     private static final TextArea infoArea;
+    private static final TextArea eventArea;
     private static final Checkbox expAverageBox;
 
     private final CompassPanel compassPanel = new CompassPanel();
+
+    // Recent event messages for the HUD
+    private final java.util.Deque<String> eventLog = new java.util.ArrayDeque<>();
+    private static final int MAX_EVENTS = 20;
+
+    // ── event logging ─────────────────────────────────────────────────
+    private void logEvent(String msg) {
+        if (eventLog.size() >= MAX_EVENTS)
+            eventLog.removeFirst();
+        eventLog.addLast(msg);
+    }
 
     // ── visibility tracking ────────────────────────────────────────────
     private static class EnemyInfo {
@@ -127,8 +139,15 @@ public class PlayerBot extends Bot {
         infoArea = new TextArea("", 30, 40, TextArea.SCROLLBARS_VERTICAL_ONLY);
         infoArea.setEditable(false);
 
+        eventArea = new TextArea("", 5, 40, TextArea.SCROLLBARS_VERTICAL_ONLY);
+        eventArea.setEditable(false);
+
         infoFrame.add(northPanel, BorderLayout.NORTH);
-        infoFrame.add(infoArea, BorderLayout.SOUTH); // text below the compass
+
+        Panel southPanel = new Panel(new BorderLayout());
+        southPanel.add(eventArea, BorderLayout.NORTH);
+        southPanel.add(infoArea, BorderLayout.CENTER);
+        infoFrame.add(southPanel, BorderLayout.SOUTH); // text below the compass
         infoFrame.setSize(1200, 800); // extra height for compass
         infoFrame.setAlwaysOnTop(true);
         infoFrame.addWindowListener(new WindowAdapter() {
@@ -200,6 +219,22 @@ public class PlayerBot extends Bot {
         }
 
         info.sinceLastScan = 0; // reset scan timer
+    }
+
+    @Override
+    public void onHitWall(dev.robocode.tankroyale.botapi.events.HitWallEvent e) {
+        logEvent("You hit a wall!");
+    }
+
+    @Override
+    public void onHitByBullet(dev.robocode.tankroyale.botapi.events.HitByBulletEvent e) {
+        double ang = e.getBullet().getDirection();
+        logEvent(String.format("You were hit by a bullet at %.1f\u00b0!", ang));
+    }
+
+    @Override
+    public void onRoundStarted(dev.robocode.tankroyale.botapi.events.RoundStartedEvent e) {
+        logEvent(String.format("New round %d started!", e.getRoundNumber()));
     }
 
     // ── controls ───────────────────────────────────────────────────────
@@ -284,6 +319,11 @@ public class PlayerBot extends Bot {
         }
 
         infoArea.setText(sb.toString());
+
+        StringBuilder evSb = new StringBuilder();
+        for (String ev : eventLog)
+            evSb.append(ev).append('\n');
+        eventArea.setText(evSb.toString());
     }
 
     // ── compass panel ──────────────────────────────────────────────────
