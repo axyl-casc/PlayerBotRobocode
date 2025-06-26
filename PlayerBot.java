@@ -202,8 +202,8 @@ public class PlayerBot extends Bot {
         compassPanel.repaint();
 
         String stats = String.format(
-                "Energy: %.1f\nX: %.1f\nY: %.1f\nHeading: %.1f\nGun Heading: %.1f\nRadar Heading: %.1f\nGun Heat: %.1f\nSpeed: %.1f",
-                getEnergy(), getX(), getY(), botHeading, gunHeading,
+                "Energy: %.1f\nX: %.1f / %d\nY: %.1f / %d\nHeading: %.1f\nGun Heading: %.1f\nRadar Heading: %.1f\nGun Heat: %.1f\nSpeed: %.1f",
+                getEnergy(), getX(), getArenaWidth(), getY(), getArenaHeight(), botHeading, gunHeading,
                 getRadarDirection(), getGunHeat(), getSpeed());
 
         StringBuilder sb = new StringBuilder(stats).append("\n\nVisibility\n");
