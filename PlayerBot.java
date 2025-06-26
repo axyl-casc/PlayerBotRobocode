@@ -54,7 +54,10 @@ public class PlayerBot extends Bot {
 
     // ── configuration ──────────────────────────────────────────────────
     /** Smoothing factor for exponential moving average of enemy angles. */
-    private static final double ANGLE_ALPHA = 0.15; // 0 < α ≤ 1
+    private static double angleAlpha = 0.15; // 0 < α ≤ 1
+
+    private static Scrollbar alphaSlider;
+    private static Label alphaLabel;
 
     // ── keyboard state ─────────────────────────────────────────────────
     private static final Set<Integer> keys = ConcurrentHashMap.newKeySet();
@@ -64,6 +67,7 @@ public class PlayerBot extends Bot {
     // ── GUI components ─────────────────────────────────────────────────
     private static final Frame infoFrame;
     private static final TextArea infoArea;
+    private static final Checkbox expAverageBox;
 
     private final CompassPanel compassPanel = new CompassPanel();
 
@@ -104,10 +108,26 @@ public class PlayerBot extends Bot {
         Label controls = new Label(
                 "W/Up: forward  S/Down: back  A/Left: turn left  D/Right: turn right   " +
                         "Q: gun left  E: gun right  R: center gun   Shift+Space: high fire  Space: fire");
+        expAverageBox = new Checkbox("Exponential averaging", true);
+        alphaSlider = new Scrollbar(Scrollbar.HORIZONTAL, (int) (angleAlpha * 100), 1, 1, 101);
+        alphaLabel = new Label(String.format("\u03B1: %.2f", angleAlpha));
+        alphaSlider.addAdjustmentListener(e -> {
+            angleAlpha = alphaSlider.getValue() / 100.0;
+            alphaLabel.setText(String.format("\u03B1: %.2f", angleAlpha));
+        });
+
+        Panel eastPanel = new Panel(new FlowLayout());
+        eastPanel.add(expAverageBox);
+        eastPanel.add(alphaLabel);
+        eastPanel.add(alphaSlider);
+
+        Panel northPanel = new Panel(new BorderLayout());
+        northPanel.add(controls, BorderLayout.CENTER);
+        northPanel.add(eastPanel, BorderLayout.EAST);
         infoArea = new TextArea("", 30, 40, TextArea.SCROLLBARS_VERTICAL_ONLY);
         infoArea.setEditable(false);
 
-        infoFrame.add(controls, BorderLayout.NORTH);
+        infoFrame.add(northPanel, BorderLayout.NORTH);
         infoFrame.add(infoArea, BorderLayout.SOUTH); // text below the compass
         infoFrame.setSize(1200, 800); // extra height for compass
         infoFrame.setAlwaysOnTop(true);
@@ -155,21 +175,29 @@ public class PlayerBot extends Bot {
         double x = Math.cos(rad);
         double y = Math.sin(rad);
 
-        if (!info.initialized) {
-            // First observation – initialise values directly
+        if (expAverageBox.getState()) {
+            if (!info.initialized) {
+                // First observation – initialise values directly
+                info.sx = x;
+                info.sy = y;
+                info.initialized = true;
+            } else {
+                // Exponential moving average for circular data
+                info.sx = (1 - angleAlpha) * info.sx + angleAlpha * x;
+                info.sy = (1 - angleAlpha) * info.sy + angleAlpha * y;
+            }
+
+            // Derive smoothed angle from averaged vector
+            info.angle = Math.toDegrees(Math.atan2(info.sy, info.sx));
+            if (info.angle < 0)
+                info.angle += 360; // keep in [0,360)
+        } else {
+            // No averaging - just use last scanned bearing
             info.sx = x;
             info.sy = y;
+            info.angle = rawAngleDeg >= 0 ? rawAngleDeg : rawAngleDeg + 360;
             info.initialized = true;
-        } else {
-            // Exponential moving average for circular data
-            info.sx = (1 - ANGLE_ALPHA) * info.sx + ANGLE_ALPHA * x;
-            info.sy = (1 - ANGLE_ALPHA) * info.sy + ANGLE_ALPHA * y;
         }
-
-        // Derive smoothed angle from averaged vector
-        info.angle = Math.toDegrees(Math.atan2(info.sy, info.sx));
-        if (info.angle < 0)
-            info.angle += 360; // keep in [0,360)
 
         info.sinceLastScan = 0; // reset scan timer
     }

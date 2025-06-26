@@ -39,3 +39,9 @@ Use the keyboard to manually drive the bot during a match:
 - **Fire**
   - **Shift** + **Space** – high power shot
   - **Space** or **Enter** – regular shot
+
+## HUD options
+
+The "Exponential averaging" checkbox toggles radar-angle smoothing.  When
+enabled, you can adjust the smoothing factor via the adjacent α slider
+(1‒100).  Higher α values weight new scans more heavily.
