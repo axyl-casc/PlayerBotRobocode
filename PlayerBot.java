@@ -43,34 +43,47 @@ import java.net.URI;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Manual-control bot driven by your keyboard with a live compass UI. */
+/*
+ * Manual‑control bot driven by your keyboard with a live compass UI.
+ * Now uses exponential averaging on enemy radar angles so that with
+ * every additional scan the estimated bearing becomes progressively
+ * more accurate and less noisy.
+ */
+
 public class PlayerBot extends Bot {
 
-    // ── keyboard state ───────────────────────────────────────────────────
+    // ── configuration ──────────────────────────────────────────────────
+    /** Smoothing factor for exponential moving average of enemy angles. */
+    private static final double ANGLE_ALPHA = 0.15; // 0 < α ≤ 1
+
+    // ── keyboard state ─────────────────────────────────────────────────
     private static final Set<Integer> keys = ConcurrentHashMap.newKeySet();
     private static final int KEY_FIRE_DELAY = 8; // ticks between shots
     private int fireCooldown = 0;
 
-    // ── GUI components ────────────────────────────────────────────────────
+    // ── GUI components ─────────────────────────────────────────────────
     private static final Frame infoFrame;
     private static final TextArea infoArea;
 
     private final CompassPanel compassPanel = new CompassPanel();
 
-    // ── visibility tracking ──────────────────────────────────────────────
+    // ── visibility tracking ────────────────────────────────────────────
     private static class EnemyInfo {
-        ScannedBotEvent event;
-        double angle;
+        ScannedBotEvent event;       // last scan event for this enemy
+        boolean initialized = false; // have we received at least one scan?
+        double sx, sy;               // smoothed unit‑vector components
+        double angle;                // smoothed bearing in degrees (0° = east)
         int sinceLastScan;
     }
 
+    /** Map: enemyId → tracking info. */
     private final ConcurrentHashMap<Integer, EnemyInfo> enemies = new ConcurrentHashMap<>();
 
-    private volatile double botHeading = 0; // our current heading
-    private volatile double gunHeading = 0; // current gun direction
+    // Current headings for our own bot
+    private volatile double botHeading = 0;
+    private volatile double gunHeading = 0;
 
-
-    // ── entrypoint ───────────────────────────────────────────────────────
+    // ── entrypoint ─────────────────────────────────────────────────────
     public static void main(String[] args) {
         if (args.length < 2) {
             System.err.println("Usage: PlayerBot <server-url> <server-secret>");
@@ -79,9 +92,9 @@ public class PlayerBot extends Bot {
         new PlayerBot(args[0], args[1]).start();
     }
 
-    // ── static initialisation of main window ─────────────────────────────
+    // ── static initialisation of main window ───────────────────────────
     static {
-        // global key hook
+        // Global key hook
         KeyboardFocusManager.getCurrentKeyboardFocusManager()
                 .addKeyEventDispatcher(PlayerBot::dispatch);
 
@@ -107,15 +120,15 @@ public class PlayerBot extends Bot {
         infoFrame.setVisible(true);
     }
 
-    // ── constructor ──────────────────────────────────────────────────────
+    // ── constructor ────────────────────────────────────────────────────
     public PlayerBot(String serverUrl, String serverSecret) {
         super(BotInfo.fromFile("PlayerBot.json"), URI.create(serverUrl), serverSecret);
-        // add compass panel once the bot is constructed (static block already ran)
+        // Add compass panel once the bot is constructed (static block already ran)
         infoFrame.add(compassPanel, BorderLayout.CENTER);
         infoFrame.validate();
     }
 
-    // ── main loop ────────────────────────────────────────────────────────
+    // ── main loop ──────────────────────────────────────────────────────
     @Override
     public void run() {
         turnRadarLeft(360); // initial sweep to ensure a scan event
@@ -130,16 +143,38 @@ public class PlayerBot extends Bot {
         }
     }
 
-    // ── event handler ────────────────────────────────────────────────────
+    // ── event handler ──────────────────────────────────────────────────
     @Override
     public void onScannedBot(ScannedBotEvent e) {
         EnemyInfo info = enemies.computeIfAbsent(e.getScannedBotId(), k -> new EnemyInfo());
         info.event = e;
-        info.angle = getRadarDirection(); // radar heading when bot detected
+        double rawAngleDeg = getRadarDirection();
+
+        // Convert bearing to unit vector (cos θ, sin θ)
+        double rad = Math.toRadians(rawAngleDeg);
+        double x = Math.cos(rad);
+        double y = Math.sin(rad);
+
+        if (!info.initialized) {
+            // First observation – initialise values directly
+            info.sx = x;
+            info.sy = y;
+            info.initialized = true;
+        } else {
+            // Exponential moving average for circular data
+            info.sx = (1 - ANGLE_ALPHA) * info.sx + ANGLE_ALPHA * x;
+            info.sy = (1 - ANGLE_ALPHA) * info.sy + ANGLE_ALPHA * y;
+        }
+
+        // Derive smoothed angle from averaged vector
+        info.angle = Math.toDegrees(Math.atan2(info.sy, info.sx));
+        if (info.angle < 0)
+            info.angle += 360; // keep in [0,360)
+
         info.sinceLastScan = 0; // reset scan timer
     }
 
-    // ── controls ─────────────────────────────────────────────────────────
+    // ── controls ───────────────────────────────────────────────────────
     private void handleMovement() {
         double speed = getSpeed();
         final double accel = 1;
@@ -194,7 +229,7 @@ public class PlayerBot extends Bot {
         }
     }
 
-    // ── HUD update ───────────────────────────────────────────────────────
+    // ── HUD update ─────────────────────────────────────────────────────
     private void updateHud() {
         botHeading = getDirection();
         gunHeading = getGunDirection();
@@ -223,7 +258,7 @@ public class PlayerBot extends Bot {
         infoArea.setText(sb.toString());
     }
 
-    // ── compass panel ────────────────────────────────────────────────────
+    // ── compass panel ──────────────────────────────────────────────────
     private class CompassPanel extends Canvas {
         private Image bufferImage;
         private Graphics2D bufferGraphics;
@@ -265,20 +300,23 @@ public class PlayerBot extends Bot {
             bufferGraphics.drawString("180°", cx - r - 25, cy + 15);
             bufferGraphics.drawString("270°", cx - 15, cy + r + 15);
 
+            // Own headings
             drawDot(bufferGraphics, Color.GREEN, botHeading, r - 50, null);
             drawDot(bufferGraphics, Color.BLUE, gunHeading, r - 30, null);
+
+            // Enemies
             for (java.util.Map.Entry<Integer, EnemyInfo> entry : enemies.entrySet()) {
                 EnemyInfo ei = entry.getValue();
                 Color c = ei.sinceLastScan > 30 * 2 ? Color.YELLOW : Color.RED;
                 drawDot(bufferGraphics, c, ei.angle, r - 10, Integer.toString(entry.getKey()));
             }
 
-            // Draw energy bars above the compass
+            // Energy bars
             int barHeight = 12;
             int barWidth = (w / 2) - 40;
             int barY = 10;
 
-            // Enemy energy on the left - use most recently scanned bot
+            // Enemy energy (most recent)
             ScannedBotEvent recent = null;
             int best = Integer.MAX_VALUE;
             for (EnemyInfo ei : enemies.values()) {
@@ -321,7 +359,7 @@ public class PlayerBot extends Bot {
         }
     }
 
-    // ── utility ──────────────────────────────────────────────────────────
+    // ── utility ─────────────────────────────────────────────────────────
     private static boolean key(int kc) {
         return keys.contains(kc);
     }
@@ -345,3 +383,4 @@ public class PlayerBot extends Bot {
         return false;
     }
 }
+// ── end of PlayerBot.java ─────────────────────────────────────────────
