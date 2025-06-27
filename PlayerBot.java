@@ -85,10 +85,10 @@ public class PlayerBot extends Bot {
 
     // ── visibility tracking ────────────────────────────────────────────
     private static class EnemyInfo {
-        ScannedBotEvent event;       // last scan event for this enemy
+        ScannedBotEvent event; // last scan event for this enemy
         boolean initialized = false; // have we received at least one scan?
-        double sx, sy;               // smoothed unit‑vector components
-        double angle;                // smoothed bearing in degrees (0° = east)
+        double sx, sy; // smoothed unit‑vector components
+        double angle; // smoothed bearing in degrees (0° = east)
         int sinceLastScan;
     }
 
@@ -122,8 +122,10 @@ public class PlayerBot extends Bot {
                         "Q: gun left  E: gun right  R: center gun   Shift+Space: high fire  Space: fire");
         expAverageBox = new Checkbox("Exponential averaging", true);
         alphaSlider = new Scrollbar(Scrollbar.HORIZONTAL, (int) (angleAlpha * 100), 1, 1, 101);
-        alphaSlider.setPreferredSize(new Dimension(250, alphaSlider.getPreferredSize().height));
+        alphaSlider.setPreferredSize(new Dimension(150, 20)); // Smaller width
         alphaLabel = new Label(String.format("\u03B1: %.2f", angleAlpha));
+
+        // Update alpha value
         alphaSlider.addAdjustmentListener(e -> {
             angleAlpha = alphaSlider.getValue() / 100.0;
             alphaLabel.setText(String.format("\u03B1: %.2f", angleAlpha));
