@@ -122,6 +122,7 @@ public class PlayerBot extends Bot {
                         "Q: gun left  E: gun right  R: center gun   Shift+Space: high fire  Space: fire");
         expAverageBox = new Checkbox("Exponential averaging", true);
         alphaSlider = new Scrollbar(Scrollbar.HORIZONTAL, (int) (angleAlpha * 100), 1, 1, 101);
+        alphaSlider.setPreferredSize(new Dimension(250, alphaSlider.getPreferredSize().height));
         alphaLabel = new Label(String.format("\u03B1: %.2f", angleAlpha));
         alphaSlider.addAdjustmentListener(e -> {
             angleAlpha = alphaSlider.getValue() / 100.0;
