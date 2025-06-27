@@ -170,6 +170,11 @@ public class PlayerBot extends Bot {
     // ── main loop ──────────────────────────────────────────────────────
     @Override
     public void run() {
+        setBodyColor(dev.robocode.tankroyale.botapi.graphics.Color.YELLOW_GREEN);
+        setTurretColor(dev.robocode.tankroyale.botapi.graphics.Color.GAINSBORO);
+        setRadarColor(dev.robocode.tankroyale.botapi.graphics.Color.GREEN_YELLOW);
+        setBulletColor(dev.robocode.tankroyale.botapi.graphics.Color.RED);
+        setScanColor(dev.robocode.tankroyale.botapi.graphics.Color.PINK);
         turnRadarLeft(360); // initial sweep to ensure a scan event
         while (isRunning()) {
             handleMovement();
