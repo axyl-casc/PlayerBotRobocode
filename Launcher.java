@@ -3,6 +3,13 @@ import java.awt.event.*;
 
 public class Launcher {
     public static void main(String[] args) {
+        // If Robocode Tank Royale supplies the server URL and secret on the
+        // command line, skip the UI and start the bot immediately.
+        if (args.length >= 2) {
+            new PlayerBot(args[0], args[1]).start();
+            return;
+        }
+
         Frame frame = new Frame("PlayerBot Launcher");
         frame.setLayout(new GridLayout(3, 2));
 

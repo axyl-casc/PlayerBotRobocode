@@ -122,6 +122,7 @@ public class PlayerBot extends Bot {
                         "Q: gun left  E: gun right  R: center gun   Shift+Space: high fire  Space: fire");
         expAverageBox = new Checkbox("Exponential averaging", true);
         alphaSlider = new Scrollbar(Scrollbar.HORIZONTAL, (int) (angleAlpha * 100), 1, 1, 101);
+        alphaSlider.setPreferredSize(new Dimension(250, alphaSlider.getPreferredSize().height));
         alphaLabel = new Label(String.format("\u03B1: %.2f", angleAlpha));
         alphaSlider.addAdjustmentListener(e -> {
             angleAlpha = alphaSlider.getValue() / 100.0;
@@ -305,9 +306,9 @@ public class PlayerBot extends Bot {
         compassPanel.repaint();
 
         String stats = String.format(
-                "Energy: %.1f\nX: %.1f / %d\nY: %.1f / %d\nHeading: %.1f\nGun Heading: %.1f\nRadar Heading: %.1f\nGun Heat: %.1f\nSpeed: %.1f",
-                getEnergy(), getX(), getArenaWidth(), getY(), getArenaHeight(), botHeading, gunHeading,
-                getRadarDirection(), getGunHeat(), getSpeed());
+                "Round: %d / %d\nTurn: %d\nEnergy: %.1f\nX: %.1f / %d\nY: %.1f / %d\nHeading: %.1f\nGun Heading: %.1f\nRadar Heading: %.1f\nGun Heat: %.1f\nSpeed: %.1f",
+                getRoundNumber(), getNumberOfRounds(), getTurnNumber(), getEnergy(), getX(), getArenaWidth(),
+                getY(), getArenaHeight(), botHeading, gunHeading, getRadarDirection(), getGunHeat(), getSpeed());
 
         StringBuilder sb = new StringBuilder(stats).append("\n\nVisibility\n");
         if (enemies.isEmpty()) {
