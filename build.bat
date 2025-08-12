@@ -14,10 +14,12 @@ if errorlevel 1 (
 :: Step 3: Copy JSON config to build folder
 copy /Y PlayerBot.json build\ > nul
 
-:: Step 4: Create proper manifest file (2 lines!)
+:: Step 4: Detect bot API jar and create manifest file (2 lines!)
+for %%F in (lib\robocode-tankroyale-bot-api-*.jar) do set "API_JAR=%%F"
+
 > build\manifest.txt (
     echo Main-Class: Launcher
-    echo Class-Path: lib/robocode-tankroyale-bot-api-0.31.0.jar
+    echo Class-Path: %API_JAR:\=/%
 )
 
 :: Step 5: Package JAR
