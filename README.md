@@ -12,7 +12,9 @@ build.bat
 ```
 
 The resulting `PlayerBotLauncher.jar` will launch a small window where you can
-enter the server address and secret before connecting.
+enter the server address and secret before connecting. All dependencies and the
+bot configuration are bundled, so the jar can be moved and executed from any
+location.
 
 ## VS Code setup
 
