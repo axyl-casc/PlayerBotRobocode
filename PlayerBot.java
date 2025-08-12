@@ -164,7 +164,7 @@ public class PlayerBot extends Bot {
 
     // ── constructor ────────────────────────────────────────────────────
     public PlayerBot(String serverUrl, String serverSecret) {
-        super(BotInfo.fromFile("PlayerBot.json"), URI.create(serverUrl), serverSecret);
+        super(BotInfo.fromResourceFile("PlayerBot.json"), URI.create(serverUrl), serverSecret);
         // Add compass panel once the bot is constructed (static block already ran)
         infoFrame.add(compassPanel, BorderLayout.CENTER);
         infoFrame.validate();
