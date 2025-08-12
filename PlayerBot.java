@@ -14,10 +14,10 @@
  *  CONTROLS
  *  --------
  *  Movement
- *    ↑  or **W**  – accelerate forward
- *    ↓  or **S**  – move backward
- *    ←  or **A**  – turn tank left
- *    →  or **D**  – turn tank right
+ *    **W**  – accelerate forward
+ *    **S**  – move backward
+ *   **A**  – turn tank left
+ *    **D**  – turn tank right
  *
  *  Gun
  *    **Q** – rotate gun left
